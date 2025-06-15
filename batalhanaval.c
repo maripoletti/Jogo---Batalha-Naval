@@ -1,22 +1,31 @@
 #include <stdio.h>
+#include <stdlib.h> // Para abs()
 
+// Constantes
 #define TAMANHO 10
+#define TAM_HABILIDADE 5
+
+#define AGUA 0
 #define NAVIO 3
 #define HABILIDADE 5
 
-// Função para inicializar o tabuleiro
+// Inicializa todo o tabuleiro com água
 void inicializaTabuleiro(int tabuleiro[TAMANHO][TAMANHO]) {
     for (int i = 0; i < TAMANHO; i++)
         for (int j = 0; j < TAMANHO; j++)
-            tabuleiro[i][j] = 0;
+            tabuleiro[i][j] = AGUA;
 }
 
-// Função para imprimir o tabuleiro com legenda
+// Imprime o tabuleiro com coordenadas e legenda
 void imprimeTabuleiro(int tabuleiro[TAMANHO][TAMANHO]) {
-    printf("\nLegenda: ~ = Água | N = Navio | * = Habilidade\n\n");
+    printf("\nLegenda: ~ = Água | N = Navio | * = Habilidade\n\n    ");
+    for (int j = 0; j < TAMANHO; j++) printf("%2d", j);
+    printf("\n");
+
     for (int i = 0; i < TAMANHO; i++) {
+        printf("%2d |", i);
         for (int j = 0; j < TAMANHO; j++) {
-            if (tabuleiro[i][j] == 0) printf("~ ");
+            if (tabuleiro[i][j] == AGUA) printf("~ ");
             else if (tabuleiro[i][j] == NAVIO) printf("N ");
             else if (tabuleiro[i][j] == HABILIDADE) printf("* ");
             else printf("? ");
@@ -25,55 +34,61 @@ void imprimeTabuleiro(int tabuleiro[TAMANHO][TAMANHO]) {
     }
 }
 
-// Posiciona um navio 3x1 em qualquer direção
+// Posiciona um navio 3x1 nas direções Horizontal, Vertical ou Diagonal (D)
 void posicionaNavio(int tabuleiro[TAMANHO][TAMANHO], int linha, int coluna, char direcao) {
     for (int i = 0; i < 3; i++) {
         int l = linha, c = coluna;
         if (direcao == 'H') c += i;
         else if (direcao == 'V') l += i;
         else if (direcao == 'D') { l += i; c += i; }
-        tabuleiro[l][c] = NAVIO;
+
+        // Garante que não passa dos limites
+        if (l >= 0 && l < TAMANHO && c >= 0 && c < TAMANHO)
+            tabuleiro[l][c] = NAVIO;
     }
 }
 
-// Gera matriz de habilidade cone 5x5 (ponta para baixo)
-void geraCone(int matriz[5][5]) {
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
+// Cria uma matriz cone 5x5 com a "ponta" para cima (expande pra baixo)
+void geraCone(int matriz[TAM_HABILIDADE][TAM_HABILIDADE]) {
+    for (int i = 0; i < TAM_HABILIDADE; i++) {
+        for (int j = 0; j < TAM_HABILIDADE; j++) {
             if (i == 0 && j == 2) matriz[i][j] = 1;
             else if (i == 1 && j >= 1 && j <= 3) matriz[i][j] = 1;
-            else if (i == 2 && j >= 0 && j <= 4) matriz[i][j] = 1;
+            else if (i == 2) matriz[i][j] = 1;
             else matriz[i][j] = 0;
         }
     }
 }
 
-// Gera matriz de habilidade cruz 5x5
-void geraCruz(int matriz[5][5]) {
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
+// Cria matriz em formato de cruz (linha e coluna central ativas)
+void geraCruz(int matriz[TAM_HABILIDADE][TAM_HABILIDADE]) {
+    for (int i = 0; i < TAM_HABILIDADE; i++) {
+        for (int j = 0; j < TAM_HABILIDADE; j++) {
             matriz[i][j] = (i == 2 || j == 2) ? 1 : 0;
         }
     }
 }
 
-// Gera matriz de habilidade octaedro (losango) 5x5
-void geraOctaedro(int matriz[5][5]) {
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
+// Cria matriz octaedro (losango) com origem no centro
+void geraOctaedro(int matriz[TAM_HABILIDADE][TAM_HABILIDADE]) {
+    for (int i = 0; i < TAM_HABILIDADE; i++) {
+        for (int j = 0; j < TAM_HABILIDADE; j++) {
             matriz[i][j] = (abs(2 - i) + abs(2 - j) <= 2) ? 1 : 0;
         }
     }
 }
 
-// Aplica uma matriz de habilidade ao tabuleiro, centrando na origem
-void aplicaHabilidade(int tabuleiro[TAMANHO][TAMANHO], int origemLinha, int origemColuna, int matriz[5][5]) {
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
+// Sobrepõe a matriz de habilidade no tabuleiro com origem centralizada
+void aplicaHabilidade(int tabuleiro[TAMANHO][TAMANHO], int origemLinha, int origemColuna, int matriz[TAM_HABILIDADE][TAM_HABILIDADE]) {
+    for (int i = 0; i < TAM_HABILIDADE; i++) {
+        for (int j = 0; j < TAM_HABILIDADE; j++) {
             int l = origemLinha + (i - 2);
             int c = origemColuna + (j - 2);
-            if (l >= 0 && l < TAMANHO && c >= 0 && c < TAMANHO && matriz[i][j] == 1 && tabuleiro[l][c] != NAVIO) {
-                tabuleiro[l][c] = HABILIDADE;
+            if (l >= 0 && l < TAMANHO && c >= 0 && c < TAMANHO) {
+                // Só marca se não for navio
+                if (matriz[i][j] == 1 && tabuleiro[l][c] != NAVIO) {
+                    tabuleiro[l][c] = HABILIDADE;
+                }
             }
         }
     }
@@ -83,23 +98,27 @@ int main() {
     int tabuleiro[TAMANHO][TAMANHO];
     inicializaTabuleiro(tabuleiro);
 
-    // Posicionando alguns navios
-    posicionaNavio(tabuleiro, 1, 1, 'H');
-    posicionaNavio(tabuleiro, 6, 3, 'V');
-    posicionaNavio(tabuleiro, 4, 4, 'D');
+    // Posiciona navios em diferentes orientações
+    posicionaNavio(tabuleiro, 1, 1, 'H'); // Horizontal
+    posicionaNavio(tabuleiro, 6, 3, 'V'); // Vertical
+    posicionaNavio(tabuleiro, 4, 4, 'D'); // Diagonal
 
     // Matrizes de habilidades
-    int cone[5][5], cruz[5][5], octaedro[5][5];
+    int cone[TAM_HABILIDADE][TAM_HABILIDADE];
+    int cruz[TAM_HABILIDADE][TAM_HABILIDADE];
+    int octaedro[TAM_HABILIDADE][TAM_HABILIDADE];
+
+    // Geração dinâmica das matrizes
     geraCone(cone);
     geraCruz(cruz);
     geraOctaedro(octaedro);
 
-    // Aplicando habilidades em pontos definidos
-    aplicaHabilidade(tabuleiro, 3, 3, cone);        // centro do cone
-    aplicaHabilidade(tabuleiro, 7, 2, cruz);        // centro da cruz
-    aplicaHabilidade(tabuleiro, 5, 7, octaedro);    // centro do losango
+    // Aplicação das habilidades em posições específicas
+    aplicaHabilidade(tabuleiro, 3, 3, cone);        // Centro do cone
+    aplicaHabilidade(tabuleiro, 7, 2, cruz);        // Centro da cruz
+    aplicaHabilidade(tabuleiro, 5, 7, octaedro);    // Centro do octaedro
 
-    // Imprimindo tabuleiro
+    // Exibe o tabuleiro final
     imprimeTabuleiro(tabuleiro);
 
     return 0;
